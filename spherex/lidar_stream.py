@@ -11,7 +11,7 @@ class Lidar(object):
         rospy.init_node('lidar')
         rospy.Subscriber('lidar_ctrl', String, self.scan)
         rospy.Subscriber('base_scan', LaserScan, self.buffer)
-        self.scan_pub = rospy.Publisher('lidar_stream', LaserScan, queue_size=10)
+        self.scan_pub = rospy.Publisher('raw_lidar_stream', LaserScan, queue_size=10)
         self.laser = LaserProjection()
         self.scan_data = None
         rospy.spin()
@@ -25,8 +25,6 @@ class Lidar(object):
             print('publishing scan data')
             self.scan_pub.publish(self.scan_data)
             self.scan_data = None
-
-
 
 if __name__ == '__main__':
     Lidar()

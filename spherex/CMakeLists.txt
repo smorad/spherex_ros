@@ -1,5 +1,6 @@
 cmake_minimum_required(VERSION 2.8.3)
 project(spherex)
+set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 ## Compile as C++11, supported in ROS Kinetic and newer
 # add_compile_options(-std=c++11)
@@ -8,6 +9,9 @@ project(spherex)
 ## if COMPONENTS list like find_package(catkin REQUIRED COMPONENTS xyz)
 ## is used, also find other catkin packages
 find_package(catkin REQUIRED COMPONENTS
+  pcl_conversions
+  pcl_ros
+  sensor_msgs
   roscpp
   rospy
   std_msgs
@@ -134,6 +138,9 @@ include_directories(
 ## With catkin_make all packages are built within a single CMake context
 ## The recommended prefix ensures that target names across packages don't collide
 # add_executable(${PROJECT_NAME}_node src/spherex_node.cpp)
+set(EXE_NAME ${PROJECT_NAME}_pcl_pipeline)
+add_executable(${EXE_NAME} src/main.cpp)
+target_link_libraries(${EXE_NAME} ${catkin_LIBRARIES})
 
 ## Rename C++ executable without prefix
 ## The above recommended prefix causes long target names, the following renames the

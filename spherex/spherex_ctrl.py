@@ -2,6 +2,8 @@
 import rospy
 from std_msgs.msg import String
 from sensor_msgs.msg import LaserScan
+from laser_geometry import LaserProjection
+from sensor_msgs import point_cloud2
 
 
 class SpherexCtrl(object):
@@ -11,14 +13,17 @@ class SpherexCtrl(object):
         rospy.init_node('spherex_ctrl')
         rate = rospy.Rate(1);
         self.lidar_ctrl = rospy.Publisher('lidar_ctrl', String, queue_size=10)
-        self.lidar_stream = rospy.Subscriber('lidar_stream', LaserScan, self.handle_scan)
+        self.raw_lidar_stream = rospy.Subscriber(
+                'raw_lidar_stream', LaserScan, self.handle_scan)
+        self.laser_projection = LaserProjection()
         while not rospy.is_shutdown():
             self.lidar_ctrl.publish('scan')
             #print('writing')
             rate.sleep()
 
     def handle_scan(self, data):
-        print('handle scan got ', data)
+        cloud = self.laser_projection.projectLaser(data)
+        pc2.read_points(cloud, skip_nans=True, field_names=("x", "y", "z"))
             
 
 def main():
