@@ -1,5 +1,5 @@
 <launch>
-    <node name="pcl_pipeline" pkg="spherex" type="spherex_pcl_pipeline" />
+    <node name="pcl_pipeline" pkg="spherex" type="spherex_pcl_pipeline"/>
     <node name="spherex_ctrl" pkg="spherex" type="spherex_ctrl.py"/>
     <node name="lidar" pkg="spherex" type="lidar_stream.py"/>
     <node pkg="rosbag" type="play" name="player" output="screen" args="--clock /home/smorad/catkin_ws/src/spherex/Mapping1.bag"/>

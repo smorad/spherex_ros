@@ -87,10 +87,16 @@
       <runprofile version="9">
         <runcommandpicklist>
           <runcommandpicklistitem>"${OUTPUT_PATH}"</runcommandpicklistitem>
+          <runcommandpicklistitem>roslaunch /home/smorad/catkin_ws/src/spherex/default.launch</runcommandpicklistitem>
+          <runcommandpicklistitem>/opt/ros/kinetic/bin/roslaunch /home/smorad/catkin_ws/src/spherex/default.launch</runcommandpicklistitem>
+          <runcommandpicklistitem>source /home/smorad/.bashrc;
+/opt/ros/kinetic/bin/roslaunch /home/smorad/catkin_ws/src/spherex/default.launch</runcommandpicklistitem>
+          <runcommandpicklistitem>source /home/smorad/.bashrc; /opt/ros/kinetic/bin/roslaunch /home/smorad/catkin_ws/src/spherex/default.launch</runcommandpicklistitem>
         </runcommandpicklist>
-        <runcommand>"${OUTPUT_PATH}"</runcommand>
+        <runcommand>source /home/smorad/.bashrc; /opt/ros/kinetic/bin/roslaunch /home/smorad/catkin_ws/src/spherex/default.launch</runcommand>
         <rundir>.</rundir>
         <buildfirst>false</buildfirst>
+        <console-type>1</console-type>
         <terminal-type>0</terminal-type>
         <remove-instrumentation>0</remove-instrumentation>
         <environment>

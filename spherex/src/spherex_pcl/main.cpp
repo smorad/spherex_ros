@@ -17,8 +17,12 @@
 #include <pcl/kdtree/kdtree_flann.h>
 #include <pcl/features/normal_3d.h>
 #include <pcl/surface/gp3.h>
+#include <pcl/io/vtk_io.h>
+#include <pcl/io/obj_io.h>
 
 void process_fast_triangulate(const sensor_msgs::PointCloud2& input) {
+    
+    std::cout<<"Processor got msg"<<std::endl;
 
     // Convert from ROS to pcl cloud
     pcl::PointCloud<pcl::PointXYZ>::Ptr cloud(new pcl::PointCloud<pcl::PointXYZ>);
@@ -64,6 +68,7 @@ void process_fast_triangulate(const sensor_msgs::PointCloud2& input) {
     gp3.setInputCloud(cloud_with_normals);
     gp3.setSearchMethod(tree2);
     gp3.reconstruct(triangles);
+    pcl::io::saveOBJFile("/home/smorad/mesh.obj", triangles);
 
 
 
@@ -95,6 +100,6 @@ int main(int argc, char** argv) {
     std::cout << "Main starting..." << std::endl;
     ros::init(argc, argv, "pcl_pipeline");
     ros::NodeHandle nh;
-    ros::Subscriber lidar_reader = nh.subscribe("raw_lidar_stream", 1, process_fast_triangulate);
+    ros::Subscriber lidar_reader = nh.subscribe("lidar_stream", 1, process_fast_triangulate);
     ros::spin();
 }
