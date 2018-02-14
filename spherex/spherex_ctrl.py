@@ -23,7 +23,7 @@ class SpherexCtrl(object):
 
     def handle_scan(self, data):
         cloud = self.laser_projection.projectLaser(data)
-        pc2.read_points(cloud, skip_nans=True, field_names=("x", "y", "z"))
+        point_cloud2.read_points(cloud, skip_nans=True, field_names=("x", "y", "z"))
             
 
 def main():
