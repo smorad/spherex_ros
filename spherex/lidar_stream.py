@@ -1,9 +1,10 @@
 #!/usr/bin/env python
-import rospy
-from std_msgs.msg import String
-from sensor_msgs.msg import LaserScan
-from sensor_msgs import point_cloud2
 from laser_geometry import LaserProjection
+import rospy
+#from sensor_msgs import point_cloud2
+from sensor_msgs.msg import LaserScan
+from std_msgs.msg import String
+
 
 class Lidar(object):
     def __init__(self):

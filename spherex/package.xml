@@ -64,6 +64,9 @@
   <exec_depend>std_msgs</exec_depend>
   <exec_depend>sensor_msgs</exec_depend>
   <exec_depend>laser_geometry</exec_depend>
+  <exec_depend>gazebo_ros</exec_depend>
+  <exec_depend>gazebo_plugins</exec_depend>
+
 
   <!-- copied from ros stuff -->
   <build_depend>pcl_conversions</build_depend>

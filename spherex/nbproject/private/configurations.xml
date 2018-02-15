@@ -6,6 +6,8 @@
         <df name="spherex">
         </df>
       </df>
+      <df name="meshes">
+      </df>
       <df name="src">
         <df name="spherex_pcl">
           <df name="build">
@@ -44,9 +46,12 @@
           </df>
           <in>main.cpp</in>
         </df>
+        <in>forces.cpp</in>
         <in>main.cpp</in>
         <in>pcl_if.cc</in>
         <in>pcl_if2.cc</in>
+      </df>
+      <df name="urdf">
       </df>
     </df>
   </logicalFolder>
