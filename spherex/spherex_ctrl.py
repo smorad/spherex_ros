@@ -1,9 +1,7 @@
 #!/usr/bin/env python
 import rospy
 from std_msgs.msg import String
-from sensor_msgs.msg import LaserScan, PointCloud2
-from laser_geometry import LaserProjection
-from sensor_msgs import point_cloud2
+from sensor_msgs.msg import PointCloud
 
 
 class SpherexCtrl(object):
@@ -12,30 +10,23 @@ class SpherexCtrl(object):
         print('Spherex control booting...')
         rospy.init_node('spherex_ctrl')
         rate = rospy.Rate(1);
-        self.lidar_ctrl = rospy.Publisher('lidar_ctrl', String, queue_size=10)
-        self.lidar_stream = rospy.Publisher('lidar_stream', PointCloud2, queue_size=10)
-        self.raw_lidar_stream = rospy.Subscriber(
-                'raw_lidar_stream', LaserScan, self.handle_scan)
-        self.laser_projection = LaserProjection()
+        self.input_cloud = rospy.Subscriber(
+                'raw_pointcloud_stream', PointCloud, self.buffer)
+        self.output_cloud = rospy.Publisher('pointcloud_buffer', PointCloud)
         while not rospy.is_shutdown():
-            self.lidar_ctrl.publish('scan')
-            #print('writing')
             rate.sleep()
+            self.publish_cloud()
+            
+    def buffer(self, data):
+        self.cloud = data
 
-    def handle_scan(self, data):
-        cloud = self.laser_projection.projectLaser(data)
-        self.lidar_stream.publish(cloud)
+    def publish_cloud(self):
+        self.output_cloud.publish(self.cloud)
+        print('published scan data to processor')
         #points = point_cloud2.read_points(cloud, skip_nans=True, field_names=("x", "y", "z"))
         #for p in points:
         #    self.lidar_stream.publish(points)
             
-
-def main():
-    pass
-    # lidar scan
-    # read lidar data
-    # convert to cartesian
-
 
 if __name__ == '__main__':
     SpherexCtrl()

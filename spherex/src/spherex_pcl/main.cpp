@@ -1,6 +1,7 @@
 #include <iostream>
 #include <ros/ros.h>
 
+
 //#include <pcl/point_types.h>
 //#include <pcl/common/comon.h>
 //#include <boost/foreach.hpp>
@@ -8,7 +9,7 @@
 //#include <pcl/features/normal_3d.h>
 //#include <pcl/surface/poisson.h>
 
-#include <sensor_msgs/PointCloud2.h>
+#include <sensor_msgs/PointCloud.h>
 #include <pcl/point_cloud.h>
 #include <pcl/point_types.h>
 #include <pcl_conversions/pcl_conversions.h>
@@ -19,30 +20,81 @@
 #include <pcl/surface/gp3.h>
 #include <pcl/io/vtk_io.h>
 #include <pcl/io/obj_io.h>
+#include <pcl/filters/voxel_grid.h>
 
-void process_fast_triangulate(const sensor_msgs::PointCloud2& input) {
-    
-    std::cout<<"Processor got msg"<<std::endl;
+void process_fast_triangulate(const sensor_msgs::PointCloud& input) {
+
+    std::cout << "Processor got msg" << std::endl;
 
     // Convert from ROS to pcl cloud
-    pcl::PointCloud<pcl::PointXYZ>::Ptr cloud(new pcl::PointCloud<pcl::PointXYZ>);
-    //pcl::PCLPointCloud2ConstPtr cloud_ptr(cloud);
-    //pcl_conversions::toPCL(input, cloud)
-    pcl::fromROSMsg(input, *cloud);
+    pcl::PointCloud<pcl::PointXYZ>::Ptr cloud_ptr(new pcl::PointCloud<pcl::PointXYZ>);
+    //pcl::PointCloud<pcl::PointXYZ> cloud = *cloud_ptr;
+
+    std::cout << "pt 1" << std::flush;
+    //pcl::PointCloud<pcl::PointXYZ> cloud = *cloud_ptr;
+    // no library fn to convert from PointCloud, only PointCloud2
+    //cloud.points = input->points;
+    cloud_ptr->points.resize(input.points.size());
+    for (int i = 0; i < cloud_ptr->points.size(); ++i) {
+
+        // Filter NaNs and infs
+        if (std::isnan(input.points[i].x) || std::isinf(input.points[i].x)) {
+            cloud_ptr->points.erase(cloud_ptr->begin() + i);
+            continue;
+        }
+        //    continue;
+        //}
+
+        std::cout << "pts" << input.points[i] << std::endl;
+        cloud_ptr->points[i].x = input.points[i].x;
+        cloud_ptr->points[i].y = input.points[i].y;
+        cloud_ptr->points[i].z = input.points[i].z;
+        std::cout << "cloud" << cloud_ptr->points[i] << std::endl;
+
+    }
+    std::cout << "cloud size" << cloud_ptr->size() << std::endl;
+
+    std::cout << "pt 2" << std::endl;
+
+
+    //Normals
+
+    // Create the normal estimation class, and pass the input dataset to it
+    pcl::NormalEstimation<pcl::PointXYZ, pcl::Normal> ne;
+    ne.setInputCloud(cloud_ptr);
+
+    // Create an empty kdtree representation, and pass it to the normal estimation object.
+    // Its content will be filled inside the object, based on the given input dataset (as no other search surface is given).
+    pcl::search::KdTree<pcl::PointXYZ>::Ptr tree(new pcl::search::KdTree<pcl::PointXYZ> ());
+    ne.setSearchMethod(tree);
+
+    // Output datasets
+    pcl::PointCloud<pcl::Normal>::Ptr cloud_normals(new pcl::PointCloud<pcl::Normal>);
+
+    // Use all neighbors in a sphere of radius 3cm
+    ne.setRadiusSearch(0.03);
+
+    // Compute the features
+    ne.compute(*cloud_normals);
+
+    // cloud_normals->points.size () should have the same size as the input cloud->points.size ()*
+
 
     // Normal estimation*
-    pcl::NormalEstimation<pcl::PointXYZ, pcl::Normal> n;
+    /*pcl::NormalEstimation<pcl::PointXYZ, pcl::Normal> n;
     pcl::PointCloud<pcl::Normal>::Ptr normals(new pcl::PointCloud<pcl::Normal>);
     pcl::search::KdTree<pcl::PointXYZ>::Ptr tree(new pcl::search::KdTree<pcl::PointXYZ>);
-    tree->setInputCloud(cloud);
-    n.setInputCloud(cloud);
+    tree->setInputCloud(cloud_ptr);
+    n.setInputCloud(cloud_ptr);
     n.setSearchMethod(tree);
-    n.setKSearch(20);
+    n.setKSearch(1); // was 20
     n.compute(*normals);
+    std::cout << "pt 3" << std::flush;*/
+
 
     // Concatenate the XYZ and normal fields*
     pcl::PointCloud<pcl::PointNormal>::Ptr cloud_with_normals(new pcl::PointCloud<pcl::PointNormal>);
-    pcl::concatenateFields(*cloud, *normals, *cloud_with_normals);
+    pcl::concatenateFields(*cloud_ptr, *cloud_normals, *cloud_with_normals);
     //* cloud_with_normals = cloud + normals
 
     // Create search tree*
@@ -100,6 +152,7 @@ int main(int argc, char** argv) {
     std::cout << "Main starting..." << std::endl;
     ros::init(argc, argv, "pcl_pipeline");
     ros::NodeHandle nh;
-    ros::Subscriber lidar_reader = nh.subscribe("lidar_stream", 1, process_fast_triangulate);
+    //ros::Subscriber lidar_reader = nh.subscribe("lidar_stream", 1, process_fast_triangulate);
+    ros::Subscriber cloud_reader = nh.subscribe("pointcloud_buffer", 1, process_fast_triangulate);
     ros::spin();
 }
