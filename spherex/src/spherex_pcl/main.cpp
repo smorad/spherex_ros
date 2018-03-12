@@ -42,6 +42,7 @@
 #include <pcl-1.7/pcl/sample_consensus/method_types.h>
 #include <pcl-1.7/pcl/PointIndices.h>
 #include <pcl-1.7/pcl/impl/point_types.hpp>
+#include <pcl/filters/extract_indices.h>
 
 
 gazebo_msgs::ModelState state_buf;
@@ -210,6 +211,79 @@ void prune_cloud(pcl::PointCloud<pcl::PointXYZ>::Ptr cloud, Eigen::Vector3f delt
     }
 }
 
+void compute_hop_vector(const pcl::PointCloud<pcl::PointXYZ>::Ptr world_cloud) {
+    // sample cloud, find areas with low point densities
+    // voxel grid will not work because the volume density will be 0
+    // past a wall
+    // pcl::octree::OctreePointCloudDensity<pcl::PointXYZ> tree;
+
+    // for point in cloud, best fit a plane
+    //      for r = 1..4
+    //          rotate clockwise in steps of 1/4 pi rad
+    //              if more than 5pi/4 rads covered, it's not a boundary
+    //              else it is a boundary point
+    // head towards area with most boundary points
+
+    // compute tree for fast neighbor searches
+    pcl::KdTreeFLANN<pcl::PointXYZ> tree;
+    tree.setInputCloud(world_cloud);
+    pcl::PointXYZ target_point;
+    int max_boundary_points = 0;
+    //std::map<pcl::PointXYZ, int> boundary;
+    //for (pcl::PointXYZ p = world_cloud->points.begin(); p != world_cloud->points.end(); ++p) {
+    for (int i = 0; i < world_cloud->points.size(); ++i) {
+        // radius for hole searching
+        int k = 10;
+
+        pcl::PointXYZ p = world_cloud->points[i];
+        // best fit plane
+        pcl::SACSegmentation<pcl::PointXYZ> seg;
+        seg.setModelType(pcl::SACMODEL_PLANE);
+        seg.setMethodType(pcl::SAC_RANSAC);
+        seg.setOptimizeCoefficients(true);
+        seg.setDistanceThreshold(k);
+        seg.setEpsAngle(0.5); // in rads
+        pcl::IndicesPtr indices(new std::vector <int>);
+
+        pcl::PointIndices::Ptr planar_points(new pcl::PointIndices);
+
+        std::vector<float> distances;
+        // compute points within radius 
+        tree.radiusSearch(p, k, *indices, distances);
+        //std::cerr << indices->size() << std::endl;
+        // sometimes radiusSearch returns 5000 (way too many) indices then fails
+        // to build a plane around them
+        if (indices->size() > 3000){
+            continue;
+        }
+        
+        // build subcloud about point
+        pcl::ExtractIndices<pcl::PointXYZ> filter;
+        pcl::PointCloud<pcl::PointXYZ>::Ptr subcloud(new pcl::PointCloud<pcl::PointXYZ>);
+        filter.setInputCloud(world_cloud);
+        filter.setIndices(indices);
+        filter.filter(*subcloud);
+        seg.setInputCloud(subcloud);
+
+
+        // find points inplane within radius k
+        pcl::ModelCoefficients coefficients;
+        seg.segment(*planar_points, coefficients);
+        // if point density is less than some number, we have a hole
+        // let's assume 8 points per sq meter
+        int density_threshold = k * k * 8;
+        if (planar_points->indices.size() < density_threshold) {
+            // hole detected
+            // boundary[p] = planar_points->indices.size();
+            if (planar_points->indices.size() > max_boundary_points) {
+                // new target
+                target_point = p;
+            }
+        }
+    }
+    std::cerr << "Heading towards point " << target_point << std::endl;
+}
+
 void slam(const sensor_msgs::PointCloud& input) {
     // Freeze position first thing, or it may change while we are processing
     gazebo_msgs::ModelState state = state_buf;
@@ -269,64 +343,11 @@ void slam(const sensor_msgs::PointCloud& input) {
     }
     Eigen::Matrix4f transformation_delta = icp.getFinalTransformation();
     std::cerr << "Fitness " << icp.getFitnessScore() << std::endl;
-            // Add new points to the world
-            *world_cloud += output_cloud;
+    // Add new points to the world
+    *world_cloud += output_cloud;
     //std::cerr << "All good, saving world" << std::endl;
     pcl::io::savePLYFile("/home/smorad/world.ply", *world_cloud);
-}
-
-void compute_hop_vector(const pcl::PointCloud<pcl::PointXYZ>::Ptr world_cloud) {
-    // sample cloud, find areas with low point densities
-    // voxel grid will not work because the volume density will be 0
-    // past a wall
-    // pcl::octree::OctreePointCloudDensity<pcl::PointXYZ> tree;
-
-    // for point in cloud, best fit a plane
-    //      for r = 1..4
-    //          rotate clockwise in steps of 1/4 pi rad
-    //              if more than 5pi/4 rads covered, it's not a boundary
-    //              else it is a boundary point
-    // head towards area with most boundary points
-
-    // compute tree for fast neighbor searches
-    pcl::KdTreeFLANN<pcl::PointXYZ> tree;
-    tree.setInputCloud(world_cloud);
-    pcl::PointXYZ target_point;
-    int max_boundary_points = 0;
-    //std::map<pcl::PointXYZ, int> boundary;
-    //for (pcl::PointXYZ p = world_cloud->points.begin(); p != world_cloud->points.end(); ++p) {
-    for (int i=0; i<world_cloud->points.size(); ++i){
-        pcl::PointXYZ p = world_cloud->points[i];
-        // best fit plane
-        pcl::SACSegmentation<pcl::PointXYZ> seg;
-        seg.setModelType(pcl::SACMODEL_PLANE);
-        seg.setMethodType(pcl::SAC_RANSAC);
-        // radius for hole searching
-        int k = 4;
-        pcl::PointIndices planar_points;
-        std::vector<int> k_indices;
-        std::vector<float> distances;
-        // compute points within radius 
-        tree.radiusSearch(p, k, k_indices, distances);
-        seg.setDistanceThreshold(k);
-        pcl::ModelCoefficients coefficients;
-        boost::shared_ptr<std::vector<int> > indices_ptr (new std::vector<int> (k_indices)); ;
-        seg.setIndices(indices_ptr);
-        // find points inplane within radius k
-        seg.segment(planar_points, coefficients);
-        // if point density is less than some number, we have a hole
-        // let's assume 8 points per sq meter
-        int density_threshold = k * k * 8;
-        if (planar_points.indices.size() < density_threshold) {
-            // hole detected
-            // boundary[p] = planar_points->indices.size();
-            if (planar_points.indices.size() > max_boundary_points){
-                // new target
-                target_point = p;
-            }
-        }        
-    }
-    std::cerr << "Heading towards point " << target_point << std::endl;
+    compute_hop_vector(world_cloud);
 }
 
 void store_pos(const gazebo_msgs::ModelStates& states) {
