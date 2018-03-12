@@ -11,11 +11,12 @@ class SpherexCtrl(object):
     def __init__(self):
         print('Spherex control booting...')
         rospy.init_node('spherex_ctrl')
-        rate = rospy.Rate(0.5);
+        # hz
+        rate = rospy.Rate(20);
         self.input_cloud = rospy.Subscriber(
                                             'raw_pointcloud_stream', PointCloud, self.buffer)
         self.output_cloud = rospy.Publisher(
-                                            'pointcloud_buffer', PointCloud)                
+                                            'pointcloud_buffer', PointCloud, queue_size=1)                
         self.hop_ctrl = rospy.Publisher(
                                         'thruster_cmd', Float64MultiArray, queue_size=100)
         while not rospy.is_shutdown():
@@ -39,6 +40,27 @@ class SpherexCtrl(object):
             self.output_cloud.publish(self.cloud)
             print('published scan data to processor')
             
+    def compute_free_boundary(self):
+        '''Given the merged point cloud data, compute the free
+        boundary'''
+        pass
+    
+    def compute_target_vector(self):
+        '''Given the free boundary, compute the target vector'''
+        # d = v0*cos(alpha) * t
+        # t = t1 + t2
+        # t1 = v0*sin(alpha) / g
+        # t2 = sqrt(
+        #   (v0 * sin(alpha)) ** 2 / g ** 2 - 2 * h / g
+        # )
+        
+        # d should be max visible distance, optimize for minimum v0
+        pass
+    
+    def compute_trajectory(self):
+        '''Given the target vector, jump as far as safely possible
+        (where we still have map data)'''
+        pass
 
 if __name__ == '__main__':
     SpherexCtrl()
