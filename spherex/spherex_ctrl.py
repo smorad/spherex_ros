@@ -19,26 +19,33 @@ class SpherexCtrl(object):
                                             'pointcloud_buffer', PointCloud, queue_size=1)                
         self.hop_ctrl = rospy.Publisher(
                                         'thruster_cmd', Float64MultiArray, queue_size=100)
+        #self.cam1_stream = rospy.Subscriber('cam1_stream', Image, queue_size=10)
+        
         while not rospy.is_shutdown():
             rate.sleep()
             self.publish_cloud()
-            if not self.run_once:
-                self.run_once = True
-                self.hop(0, 100, 0, 2, 0)
-                self.hop(100, 0, 0, 2, 0)
+            #if not self.run_once:
+            #self.run_once = True
+            self.hop(0, 0, 50, 1, 1)
+            self.hop(50, 0, 0, 1, 1)
 
             
     def buffer(self, data):
         self.cloud = data
         
     def hop(self, x, y, z, duration, use_global_frame):
-        hop_impulse = Float64MultiArray(data=[x, y, z, duration, use_global_frame])
+        # xyz in mN
+        # thruster input is reversed (oops)
+        hop_impulse = Float64MultiArray(data=[y * 1000, x * 1000, z * 1000, duration, use_global_frame])
         self.hop_ctrl.publish(hop_impulse)
 
     def publish_cloud(self):
         if hasattr(self, 'cloud') and self.cloud:
             self.output_cloud.publish(self.cloud)
             print('published scan data to processor')
+            
+    def publish_stream(self):
+        pass
             
     def compute_free_boundary(self):
         '''Given the merged point cloud data, compute the free
