@@ -16,18 +16,18 @@ class SpherexCtrl(object):
         self.input_cloud = rospy.Subscriber(
                                             'raw_pointcloud_stream', PointCloud, self.buffer)
         self.output_cloud = rospy.Publisher(
-                                            'pointcloud_buffer', PointCloud, queue_size=1)                
+                                            'pointcloud_buffer', PointCloud, queue_size=1000)                
         self.hop_ctrl = rospy.Publisher(
-                                        'thruster_cmd', Float64MultiArray, queue_size=100)
+                                        'thruster_cmd', Float64MultiArray, queue_size=1000)
         #self.cam1_stream = rospy.Subscriber('cam1_stream', Image, queue_size=10)
         
         while not rospy.is_shutdown():
             rate.sleep()
             self.publish_cloud()
             #if not self.run_once:
-            #self.run_once = True
-            self.hop(0, 0, 50, 1, 1)
-            self.hop(50, 0, 0, 1, 1)
+                #self.run_once = True
+            self.hop(10, 0.0, 0, 0.001, 1.0)
+            #self.hop(5000, 0, 0, 0.00001, 1)
 
             
     def buffer(self, data):
@@ -36,7 +36,7 @@ class SpherexCtrl(object):
     def hop(self, x, y, z, duration, use_global_frame):
         # xyz in mN
         # thruster input is reversed (oops)
-        hop_impulse = Float64MultiArray(data=[y * 1000, x * 1000, z * 1000, duration, use_global_frame])
+        hop_impulse = Float64MultiArray(data=[x, y, z, duration, use_global_frame])
         self.hop_ctrl.publish(hop_impulse)
 
     def publish_cloud(self):

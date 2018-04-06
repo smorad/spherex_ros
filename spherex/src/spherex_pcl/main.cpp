@@ -35,6 +35,7 @@
 #include <eigen3/Eigen/src/Geometry/AngleAxis.h>
 #include <eigen3/Eigen/src/Core/PlainObjectBase.h>
 #include <eigen3/Eigen/src/Geometry/Translation.h>
+#include <Eigen/Dense>
 #include <pcl-1.7/pcl/kdtree/kdtree.h>
 //#include <pcl/octree/octree_pointcloud_density.h>
 #include <pcl/segmentation/sac_segmentation.h>
@@ -48,10 +49,13 @@
 #include <pcl/filters/statistical_outlier_removal.h>
 #include <pcl/surface/mls.h>
 #include <sensor_msgs/Image.h>
+#include <sensor_msgs/Imu.h>
 
 
 gazebo_msgs::ModelState state_buf;
 gazebo_msgs::ModelState last_state_buf;
+sensor_msgs::Imu imu_buf;
+
 pcl::PolygonMesh partial_surface; // triangles(new pcl::PolygonMesh);
 
 pcl::PointCloud<pcl::PointXYZ>::Ptr build_cloud(
@@ -72,6 +76,43 @@ pcl::PointCloud<pcl::PointXYZ>::Ptr build_cloud(
 
     return cloud_ptr;
 }
+
+std::vector<float> compute_sector(gazebo_msgs::ModelState pos_t0, gazebo_msgs::ModelState pos_t1, float radius=30){
+    
+    Eigen::Vector3f origin(0,0,0);
+    Eigen::Vector3f p_t0(pos_t0.pose.position.x, pos_t0.pose.position.y, pos_t0.pose.position.z);
+    Eigen::Vector3f p_t1(pos_t1.pose.position.x, pos_t1.pose.position.y, pos_t1.pose.position.z);
+    Eigen::Vector3f diff = p_t1 - p_t0;
+    float d = diff.squaredNorm();
+    
+    if (d > radius || d == radius){
+        // no intersection
+        std::cerr << "Moved too fast, could not compute sector" << std::endl;
+        std::vector<float> v;
+        v.push_back(0.0);
+        return v;
+    }
+    
+    // create new origin at p_t1
+    // p_t0 = p_t1 - p_t0
+    // draw new axis along distance vector
+    // 
+    
+    
+    // Compute intersection points between two circles
+    // (x-x0)^2 + (y-y0)^2 + (z-z0)^2 = radius^2
+    // (x-x1)^2 + (y-y1)^2 + (z-z1)^2 = radius^2
+    // (x-x2)^2 + (y-y2)^2 + (z-z2)^2 = radius^2
+    // (u - p_t0) .^ 2 = r^2
+    // (u - p_t1) .^ 2 = r^2
+    
+    
+    // (u - p_t0).dot(u - p_t0) = r^2
+    // uu -2u.dot(p_t0) + p_t0.dot(p_t0) = r^2
+    // u(u - 2.do)
+    
+}
+
 
 /* Compute normals and insert them into the cloud*/
 pcl::PointCloud<pcl::PointNormal>::Ptr compute_normals(pcl::PointCloud<pcl::PointXYZ>::Ptr cloud_ptr) {
@@ -306,117 +347,6 @@ void compute_hop_vector_lazy_closest(const pcl::PointCloud<pcl::PointXYZ>::Ptr w
     pcl::io::savePLYFile("/home/smorad/cloud_target.ply", c);
 }
 
-void compute_hop_vector_lazy(const pcl::PointCloud<pcl::PointXYZ>::Ptr world_cloud) {
-    //pcl::octree::OctreePointCloudDensity<pcl::PointXYZ> density_tree(50);
-    pcl::KdTreeFLANN<pcl::PointXYZ> tree;
-    tree.setInputCloud(world_cloud);
-    int min_hole_density = 3;
-    int max_hole_density = 6; // per sq meter
-    pcl::PointXYZ target_point;
-    for (int i = 0; i < world_cloud->points.size(); ++i) {
-        pcl::IndicesPtr indices(new std::vector <int>);
-        std::vector<float> distances;
-        tree.radiusSearch(world_cloud->points[i], 5, *indices, distances);
-        int density = indices->size();
-        if (density > min_hole_density && density < max_hole_density) {
-            target_point = world_cloud->points[i];
-            break;
-        }
-    }
-    std::cerr << "Heading towards point " << target_point << std::endl;
-    //pcl::PointCloud<pcl::PointXYZ>::Ptr sceneCloud(new pcl::PointCloud<pcl::PointXYZ>);
-    pcl::PointCloud<pcl::PointXYZ> c;
-    c.points.push_back(target_point);
-    pcl::io::savePLYFile("/home/smorad/cloud_target.ply", c);
-
-}
-
-void compute_hop_vector(const pcl::PointCloud<pcl::PointXYZ>::Ptr world_cloud) {
-    // sample cloud, find areas with low point densities
-    // voxel grid will not work because the volume density will be 0
-    // past a wall
-    // pcl::octree::OctreePointCloudDensity<pcl::PointXYZ> tree;
-
-    // for point in cloud, best fit a plane
-    //      for r = 1..4
-    //          rotate clockwise in steps of 1/4 pi rad
-    //              if more than 5pi/4 rads covered, it's not a boundary
-    //              else it is a boundary point
-    // head towards area with most boundary points
-
-    // compute tree for fast neighbor searches
-    pcl::KdTreeFLANN<pcl::PointXYZ> tree;
-    tree.setInputCloud(world_cloud);
-    pcl::PointXYZ target_point;
-    std::vector<pcl::PointXYZ> boundary_points;
-    int max_boundary_points = 0;
-    int k = 10;
-
-    //std::map<pcl::PointXYZ, int> boundary;
-    //for (pcl::PointXYZ p = world_cloud->points.begin(); p != world_cloud->points.end(); ++p) {
-    for (int i = 0; i < world_cloud->points.size(); ++i) {
-        // radius for hole searching
-        pcl::PointXYZ p = world_cloud->points[i];
-        // best fit plane
-        pcl::SACSegmentation<pcl::PointXYZ> seg;
-        seg.setModelType(pcl::SACMODEL_PLANE);
-        seg.setMethodType(pcl::SAC_RANSAC);
-        seg.setOptimizeCoefficients(true);
-        seg.setDistanceThreshold(k);
-        seg.setEpsAngle(0.5); // in rads
-        pcl::IndicesPtr indices(new std::vector <int>);
-
-        pcl::PointIndices::Ptr planar_points(new pcl::PointIndices);
-
-        std::vector<float> distances;
-        // compute points within radius 
-        tree.radiusSearch(p, k, *indices, distances);
-        //std::cerr << indices->size() << std::endl;
-        // sometimes radiusSearch returns 5000 (way too many) indices then fails
-        // to build a plane around them
-        if (indices->size() > 3000) {
-            continue;
-        } else if (indices->size() < 10) {
-            // too few for a plane, this is probably a boundary
-            boundary_points.push_back(p);
-            continue;
-        }
-
-        // build subcloud about point
-        pcl::ExtractIndices<pcl::PointXYZ> filter;
-        pcl::PointCloud<pcl::PointXYZ>::Ptr subcloud(new pcl::PointCloud<pcl::PointXYZ>);
-        filter.setInputCloud(world_cloud);
-        filter.setIndices(indices);
-        filter.filter(*subcloud);
-        seg.setInputCloud(subcloud);
-
-
-        // find points inplane within radius k
-        pcl::ModelCoefficients coefficients;
-        seg.segment(*planar_points, coefficients);
-        // if point density is less than some number, we have a hole
-        // let's assume 8 points per sq meter
-        int density_threshold = k * k * 8;
-        if (planar_points->indices.size() < density_threshold) {
-            // hole detected
-
-            boundary_points.push_back(p);
-        }
-    }
-    // Move to densest collection of boundary points per 5*k voxel
-    /*pcl::octree::OctreePointCloudDensity<pcl::PointXYZ> density_tree(5 * k);
-    int max_density = 0;
-    int index = 0;
-    for (int i = 0; i < boundary_points.size(); ++i) {
-        int density = density_tree.getVoxelDensityAtPoint(boundary_points[i]);
-        if (density > max_density) {
-            max_density = density;
-            index = i;
-        }
-    }*/
-    std::cerr << "Heading towards point " << target_point << std::endl;
-}
-
 void remove_outliers(pcl::PointCloud<pcl::PointXYZ>::Ptr cloud) {
     pcl::PointCloud<pcl::PointXYZ>::Ptr cloud_filtered(new pcl::PointCloud<pcl::PointXYZ>);
     pcl::StatisticalOutlierRemoval<pcl::PointXYZ> filter;
@@ -555,7 +485,7 @@ void slam(const sensor_msgs::PointCloud& input) {
     //std::cerr << "All good, saving world" << std::endl;
     pcl::io::savePLYFile("/home/smorad/world.ply", *world_cloud);
     //compute_hop_vector_naive(world_cloud);
-    slow_boundary(world_cloud);
+    //slow_boundary(world_cloud);
 }
 
 void skew_image(const sensor_msgs::Image& input) {
@@ -585,12 +515,17 @@ void store_pos(const gazebo_msgs::ModelStates& states) {
     }
 }
 
+void store_imu(const sensor_msgs::ImuPtr imu){
+    imu_buf = imu;
+}
+
 int main(int argc, char** argv) {
     std::cout << "Main starting..." << std::endl;
     ros::init(argc, argv, "pcl_pipeline");
     ros::NodeHandle nh;
     //ros::Subscriber lidar_reader = nh.subscribe("lidar_stream", 1, process_fast_triangulate);
-    ros::Subscriber pos_reader = nh.subscribe("gazebo/model_states", 1, store_pos);
+    //ros::Subscriber pos_reader = nh.subscribe("gazebo/model_states", 1, store_pos);
+    ros::Subscriber imu_reader = nh.subscribe("imu_stream", 1, store_imu);
     ros::Subscriber cloud_reader = nh.subscribe("pointcloud_buffer", 1, slam);
     ros::Subscriber image_reader = nh.subscribe("cam1_stream", 1, skew_image);
     ros::spin();
