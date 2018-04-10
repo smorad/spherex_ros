@@ -20,24 +20,31 @@ class SpherexCtrl(object):
         self.hop_ctrl = rospy.Publisher(
                                         'thruster_cmd', Float64MultiArray, queue_size=1000)
         #self.cam1_stream = rospy.Subscriber('cam1_stream', Image, queue_size=10)
-        
+        rospy.Timer(rospy.Duration(5), self.do_hop)
         while not rospy.is_shutdown():
             rate.sleep()
             self.publish_cloud()
             #if not self.run_once:
                 #self.run_once = True
-            self.hop(10, 0.0, 0, 0.001, 1.0)
+            #self.hop(10, 0.0, 0, 0.001, 1.0)
             #self.hop(5000, 0, 0, 0.00001, 1)
-
+            
+            
+            
+            
+    def do_hop(self, *args, **kwargs):
+        self.hop([1.0, 0.0, 1.0], 2.0, 1.0)
             
     def buffer(self, data):
         self.cloud = data
         
-    def hop(self, x, y, z, duration, use_global_frame):
-        # xyz in mN
-        # thruster input is reversed (oops)
-        hop_impulse = Float64MultiArray(data=[x, y, z, duration, use_global_frame])
+    def hop(self, unit_vector, v0, use_global_frame):
+        # ensure vec is normed
+        unit_vector = [i * i / sum(unit_vector) for i in unit_vector]
+        hop_impulse = Float64MultiArray(
+                                        data=[unit_vector[0], unit_vector[1], unit_vector[2], v0, use_global_frame])
         self.hop_ctrl.publish(hop_impulse)
+        
 
     def publish_cloud(self):
         if hasattr(self, 'cloud') and self.cloud:

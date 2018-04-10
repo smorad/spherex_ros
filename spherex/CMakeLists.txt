@@ -120,7 +120,7 @@ catkin_package(
 ## Specify additional locations of header files
 ## Your package locations should be listed before other locations
 include_directories(
-# include
+  include
   ${catkin_INCLUDE_DIRS}
 )
 
@@ -128,6 +128,10 @@ include_directories(
 # add_library(${PROJECT_NAME}
 #   src/${PROJECT_NAME}/spherex.cpp
 # )
+
+add_library(${PROJECT_NAME}_ekf 
+    SHARED src/ekf.cpp src/tiny_ekf.c
+)
 
 ## Add cmake target dependencies of the library
 ## as an example, code may need to be generated before libraries
@@ -140,7 +144,7 @@ include_directories(
 # add_executable(${PROJECT_NAME}_node src/spherex_node.cpp)
 set(EXE_NAME ${PROJECT_NAME}_pcl_pipeline)
 add_executable(${EXE_NAME} src/main.cpp)
-target_link_libraries(${EXE_NAME} ${catkin_LIBRARIES})
+target_link_libraries(${EXE_NAME} ${catkin_LIBRARIES} ${PROJECT_NAME}_ekf)
 
 ## Rename C++ executable without prefix
 ## The above recommended prefix causes long target names, the following renames the

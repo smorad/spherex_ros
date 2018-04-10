@@ -3,53 +3,17 @@
   <logicalFolder name="root" displayName="root" projectFiles="true" kind="ROOT">
     <df root="." name="0">
       <df name="include">
-        <df name="spherex">
-        </df>
+        <in>TinyEKF.h</in>
+        <in>ekf.hpp</in>
+        <in>tiny_ekf.h</in>
+        <in>tiny_ekf_struct.h</in>
       </df>
       <df name="meshes">
       </df>
       <df name="src">
-        <df name="spherex_pcl">
-          <df name="build">
-            <df name="Debug">
-              <df name="GNU-Linux">
-              </df>
-            </df>
-            <df name="Release">
-              <df name="GNU-Linux">
-              </df>
-            </df>
-          </df>
-          <df name="CMakeFiles">
-            <df name="3.5.1">
-              <df name="CompilerIdC">
-                <in>CMakeCCompilerId.c</in>
-              </df>
-              <df name="CompilerIdCXX">
-                <in>CMakeCXXCompilerId.cpp</in>
-              </df>
-            </df>
-            <df name="CMakeTmp">
-            </df>
-            <in>feature_tests.c</in>
-            <in>feature_tests.cxx</in>
-          </df>
-          <df name="dist">
-            <df name="Debug">
-              <df name="GNU-Linux">
-              </df>
-            </df>
-            <df name="Release">
-              <df name="GNU-Linux">
-              </df>
-            </df>
-          </df>
-          <in>main.cpp</in>
-        </df>
-        <in>forces.cpp</in>
+        <in>ekf.cpp</in>
         <in>main.cpp</in>
-        <in>pcl_if.cc</in>
-        <in>pcl_if2.cc</in>
+        <in>tiny_ekf.c</in>
       </df>
       <df name="urdf">
       </df>
