@@ -4,6 +4,7 @@
     <df root="." name="0">
       <df name="include">
         <in>TinyEKF.h</in>
+        <in>consts.h</in>
         <in>ekf.hpp</in>
         <in>tiny_ekf.h</in>
         <in>tiny_ekf_struct.h</in>
