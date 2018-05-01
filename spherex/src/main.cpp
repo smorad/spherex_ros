@@ -429,10 +429,7 @@ void slam(const sensor_msgs::ImuConstPtr& inertial, const sensor_msgs::PointClou
     z[5] = inertial->linear_acceleration.z;
     // TODO impl imu
     // q
-    // convert rot mat to quat
-    Eigen::Matrix3f test = transformation.block<3,3>(0,0);
-    std::cerr << "TEST " << test << std::endl;
-    
+    // convert rot mat to quat    
     Eigen::Quaternionf q(transformation.block<3,3>(0,0));
     z[6] = q.w();
     z[7] = q.x();
@@ -442,6 +439,7 @@ void slam(const sensor_msgs::ImuConstPtr& inertial, const sensor_msgs::PointClou
     z[10] = inertial->angular_velocity.x;
     z[11] = inertial->angular_velocity.y;
     z[12] = inertial->angular_velocity.z;
+    ekf.dt = dt;
     ekf.step(z);
     std::cerr << "sensor vals" << z[0] << " " << z[1] << " " << z[2] << std::endl;
     std::cerr << "new values " << ekf.getX(0) << " " << ekf.getX(1) << " " << ekf.getX(2) << std::endl;

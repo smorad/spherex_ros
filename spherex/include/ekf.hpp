@@ -18,7 +18,7 @@
 #define Nsta 13 // num states
 // r v q w
 #define Mobs 13   // num observations
-// TODO set dt to actual value
+
 #define radius 0.15
 
 #include "consts.h"
@@ -28,6 +28,7 @@ class SphereXEKF : public TinyEKF {
 public:
     double dt;
     SphereXEKF();
+    void debug(double fx[Nsta], double F[Nsta][Nsta], double hx[Mobs], double H[Mobs][Mobs]);
     void model(double fx[Nsta], double F[Nsta][Nsta], double hx[Mobs], double H[Mobs][Nsta]);
 };
 

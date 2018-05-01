@@ -55,6 +55,45 @@ double* q_dot(double q[], double w[]) {
     return qdot_arr;
 }
 
+void SphereXEKF::debug(double fx[Nsta], double F[Nsta][Nsta], double hx[Mobs], double H[Mobs][Mobs]) {
+
+    std::cerr << "current state" << std::endl;
+    for (int i = 0; i < Nsta; ++i) {
+        std::cerr << this->getX(i) << "   ";
+    }
+    std::cerr << std::endl;
+
+    std::cerr << "process model" << std::endl;
+    for (int j = 0; j < Nsta; ++j) {
+        std::cerr << fx[j] << "   ";
+    }
+    std::cerr << std::endl;
+
+    std::cerr << "process jacobian" << std::endl;
+    for (int i = 0; i < Nsta; ++i) {
+        for (int j = 0; j < Nsta; ++j) {
+            std::cerr << F[i][j] << "   ";
+        }
+        std::cerr << std::endl;
+    }
+
+    std::cerr << "sensor model" << std::endl;
+    for (int j = 0; j < Mobs; ++j) {
+        std::cerr << hx[j] << "   ";
+    }
+    std::cerr << std::endl;
+
+    std::cerr << "sensor jacobian" << std::endl;
+    for (int i = 0; i < Mobs; ++i) {
+        for (int j = 0; j < Mobs; ++j) {
+            std::cerr << H[i][j] << "   ";
+        }
+        std::cerr << std::endl;
+    }
+}
+
+
+
 void SphereXEKF::model(double fx[Nsta], double F[Nsta][Nsta], double hx[Mobs], double H[Mobs][Nsta]) {
     std::cerr << "start model" << std::endl;
     // measurements
@@ -67,12 +106,38 @@ void SphereXEKF::model(double fx[Nsta], double F[Nsta][Nsta], double hx[Mobs], d
             hx[i] = this->x[i];
         }
     }
-    // measurement jacobian is constant
+    // measurement jacobian
+    Eigen::MatrixXd smodel(Mobs, Mobs);
+    smodel <<
+            // r a q w
+            // r
+            1, 0, 0, /**/ 0, 0, 0, /**/ 0, 0, 0, 0, /**/ 0, 0, 0,
+            0, 1, 0, /**/ 0, 0, 0, /**/ 0, 0, 0, 0, /**/ 0, 0, 0,
+            0, 0, 1, /**/ 0, 0, 0, /**/ 0, 0, 0, 0, /**/ 0, 0, 0,
+            // a
+            0, 0, 0, /**/ dt, 0, 0, /**/ 0, 0, 0, 0, /**/ 0, 0, 0,
+            0, 0, 0, /**/ 0, dt, 0, /**/ 0, 0, 0, 0, /**/ 0, 0, 0,
+            0, 0, 0, /**/ 0, 0, dt, /**/ 0, 0, 0, 0, /**/ 0, 0, 0,
+            // q
+            0, 0, 0, /**/ 0, 0, 0, /**/ 1, 0, 0, 0, /**/ 0, 0, 0,
+            0, 0, 0, /**/ 0, 0, 0, /**/ 0, 1, 0, 0, /**/ 0, 0, 0,
+            0, 0, 0, /**/ 0, 0, 0, /**/ 0, 0, 1, 0, /**/ 0, 0, 0,
+            0, 0, 0, /**/ 0, 0, 0, /**/ 0, 0, 0, 1, /**/ 0, 0, 0,
+            // w
+            0, 0, 0, /**/ 0, 0, 0, /**/ 0, 0, 0, 0, /**/ 1, 0, 0,
+            0, 0, 0, /**/ 0, 0, 0, /**/ 0, 0, 0, 0, /**/ 0, 1, 0,
+            0, 0, 0, /**/ 0, 0, 0, /**/ 0, 0, 0, 0, /**/ 0, 0, 1;
+    for (int i = 0; i < smodel.rows(); ++i) {
+        for (int j = 0; j < smodel.cols(); ++j) {
+            H[i][j] = smodel(i, j);
+        }
+    }
+    /*
     for (int i = 0; i < Mobs; ++i) {
         for (int j = 0; j < Mobs; ++j) {
             H[i][j] = 1;
         }
-    }
+    }*/
 
     std::cerr << "start process model" << std::endl;
     // process model
@@ -127,14 +192,12 @@ void SphereXEKF::model(double fx[Nsta], double F[Nsta][Nsta], double hx[Mobs], d
             0, 0, 0, /**/ 0, 0, 0, /**/ 0, 0, 0, 0, /**/ 1, 0, 0,
             0, 0, 0, /**/ 0, 0, 0, /**/ 0, 0, 0, 0, /**/ 0, 1, 0,
             0, 0, 0, /**/ 0, 0, 0, /**/ 0, 0, 0, 0, /**/ 0, 0, 1;
-
-    std::cerr << "process model " << pmodel << std::endl;
     for (int i = 0; i < pmodel.rows(); ++i) {
         for (int j = 0; j < pmodel.cols(); ++j) {
             F[i][j] = pmodel(i, j);
         }
     }
-    std::cerr << "model done" << std::endl;
+    debug(fx, F, hx, H);
 
 }
 
