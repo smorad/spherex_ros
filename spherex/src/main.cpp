@@ -52,10 +52,16 @@
 #include <sensor_msgs/Imu.h>
 #include <message_filters/subscriber.h>
 #include <message_filters/time_synchronizer.h>
+#include <pcl/visualization/cloud_viewer.h>
 
 #include "ekf.hpp"
 
 SphereXEKF ekf;
+pcl::PointCloud<pcl::PointXYZ>::Ptr world_cloud;
+//pcl::visualization::CloudViewer viewer("Viewer");
+boost::shared_ptr<pcl::visualization::PCLVisualizer> viewer(new pcl::visualization::PCLVisualizer("3D Viewer"));
+
+
 double last_t = 0;
 
 pcl::PolygonMesh partial_surface; // triangles(new pcl::PolygonMesh);
@@ -78,7 +84,6 @@ pcl::PointCloud<pcl::PointXYZ>::Ptr build_cloud(
 
     return cloud_ptr;
 }
-
 
 /* Compute normals and insert them into the cloud*/
 pcl::PointCloud<pcl::PointNormal>::Ptr compute_normals(pcl::PointCloud<pcl::PointXYZ>::Ptr cloud_ptr) {
@@ -174,6 +179,19 @@ void slow_boundary(pcl::PointCloud<pcl::PointXYZ>::ConstPtr world_cloud) {
 
 }
 
+void display_init() {
+    viewer->setBackgroundColor(0, 0, 0);
+    viewer->addPointCloud<pcl::PointXYZ> (world_cloud, "test cloud");
+
+    viewer->setPointCloudRenderingProperties(pcl::visualization::PCL_VISUALIZER_POINT_SIZE, 2, "sample cloud");
+    viewer->addCoordinateSystem(1.0);
+}
+
+void display() {
+    viewer->updatePointCloud(world_cloud, "test cloud");
+    viewer->spinOnce(100);
+}
+
 void process_fast_triangulate(const sensor_msgs::PointCloud& input) {
 
     //std::cout << "Processor got msg" << std::endl;
@@ -233,7 +251,6 @@ Eigen::Matrix4f build_trans_mat(const sensor_msgs::Imu inertial) {
     return res;
 }*/
 
-pcl::PointCloud<pcl::PointXYZ>::Ptr world_cloud;
 
 
 void compute_hop_vector_naive(const pcl::PointCloud<pcl::PointXYZ>::Ptr world_cloud) {
@@ -342,7 +359,7 @@ void simplify_cloud(pcl::PointCloud<pcl::PointXYZ>::Ptr cloud) {
 void slam(const sensor_msgs::ImuConstPtr& inertial, const sensor_msgs::PointCloudConstPtr& input) {
     // Compute timestep from last run
     std::cerr << "stamp " << inertial->header.stamp.nsec << " last " << last_t << std::endl;
-    double dt = (inertial->header.stamp.nsec - last_t) / 10e9;   //in secs
+    double dt = (inertial->header.stamp.nsec - last_t) / 10e9; //in secs
     last_t = inertial->header.stamp.nsec;
 
 
@@ -357,6 +374,8 @@ void slam(const sensor_msgs::ImuConstPtr& inertial, const sensor_msgs::PointClou
         // Simplify cloud so we don't run out of memory
         //simplify_cloud(cloud_ptr);
         world_cloud = cloud_ptr;
+        display_init();
+
 
         pcl::io::savePLYFile("/home/smorad/cloud_origin.ply", *cloud_ptr);
         // TODO: PASS THIS FROM GAZEBO
@@ -385,8 +404,8 @@ void slam(const sensor_msgs::ImuConstPtr& inertial, const sensor_msgs::PointClou
     icp.setTransformationEpsilon(1e-8);
     // Set the euclidean distance difference epsilon (criterion 3)
     icp.setEuclideanFitnessEpsilon(0.001);
-    
-    
+
+
     // Align cloud_ptr to world_cloud
     icp.setInputSource(cloud_ptr);
     icp.setInputTarget(world_cloud);
@@ -413,17 +432,18 @@ void slam(const sensor_msgs::ImuConstPtr& inertial, const sensor_msgs::PointClou
         //simplify_cloud(world_cloud);
     }
     //std::cerr << "All good, saving world" << std::endl;
-    pcl::io::savePLYFile("/home/smorad/world.ply", *world_cloud);
+    //pcl::io::savePLYFile("/home/smorad/world.ply", *world_cloud);
+    display();
     //compute_hop_vector_naive(world_cloud);
     //slow_boundary(world_cloud);
-    
-    
+
+
     // EKF
-    double z[13];   //r a q w
+    double z[13]; //r a q w
     // r
-    z[0] = transformation(0,3);
-    z[1] = transformation(1,3);
-    z[2] = transformation(2,3);
+    z[0] = transformation(0, 3);
+    z[1] = transformation(1, 3);
+    z[2] = transformation(2, 3);
     // a
     z[3] = inertial->linear_acceleration.x;
     z[4] = inertial->linear_acceleration.y;
@@ -431,7 +451,7 @@ void slam(const sensor_msgs::ImuConstPtr& inertial, const sensor_msgs::PointClou
     // TODO impl imu
     // q
     // convert rot mat to quat    
-    Eigen::Quaternionf q(transformation.block<3,3>(0,0));
+    Eigen::Quaternionf q(transformation.block<3, 3>(0, 0));
     z[6] = q.w();
     z[7] = q.x();
     z[8] = q.y();
@@ -444,7 +464,7 @@ void slam(const sensor_msgs::ImuConstPtr& inertial, const sensor_msgs::PointClou
     ekf.step(z);
     std::cerr << "sensor vals" << z[0] << " " << z[1] << " " << z[2] << std::endl;
     std::cerr << "new values " << ekf.getX(0) << " " << ekf.getX(1) << " " << ekf.getX(2) << std::endl;
-    
+
 }
 
 void skew_image(const sensor_msgs::Image& input) {
@@ -459,7 +479,6 @@ void skew_image(const sensor_msgs::Image& input) {
     // Texture map picture to surface (this handles shearing/skewing/etc)
 }
 
-
 int main(int argc, char** argv) {
     std::cout << "Main starting..." << std::endl;
     ros::init(argc, argv, "pcl_pipeline");
@@ -469,7 +488,7 @@ int main(int argc, char** argv) {
     //ros::Subscriber imu_reader = nh.subscribe("imu_stream", 1, store_imu);
     //ros::Subscriber cloud_reader = nh.subscribe("pointcloud_buffer", 1, slam);
     //ros::Subscriber image_reader = nh.subscribe("cam1_stream", 1, skew_image);
-    
+
     message_filters::Subscriber<sensor_msgs::Imu> imu_sub(nh, "imu_stream", 1);
     message_filters::Subscriber<sensor_msgs::PointCloud> ptc_sub(nh, "pointcloud_buffer", 1);
     message_filters::TimeSynchronizer<sensor_msgs::Imu, sensor_msgs::PointCloud> sync(imu_sub, ptc_sub, 10);

@@ -20,12 +20,14 @@ class SpherexCtrl(object):
         self.hop_ctrl = rospy.Publisher(
                                         'thruster_cmd', Float64MultiArray, queue_size=1000)
         #self.cam1_stream = rospy.Subscriber('cam1_stream', Image, queue_size=10)
-        rospy.Timer(rospy.Duration(5), self.do_hop)
+        #rospy.Timer(rospy.Duration(5), self.do_hop)
+        self.run_once = False
         while not rospy.is_shutdown():
             rate.sleep()
             self.publish_cloud()
-            #if not self.run_once:
-                #self.run_once = True
+            if not self.run_once:
+                self.run_once = True
+                self.do_hop()
             #self.hop(10, 0.0, 0, 0.001, 1.0)
             #self.hop(5000, 0, 0, 0.00001, 1)
             

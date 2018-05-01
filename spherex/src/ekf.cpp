@@ -14,7 +14,9 @@
 
 
 #include <Eigen/Dense>
+#include <unsupported/Eigen/MatrixFunctions>
 #include <iostream>
+#include <math.h>
 
 #include "ekf.hpp"
 
@@ -32,16 +34,14 @@ SphereXEKF::SphereXEKF() {
 // quaternion shit
 // http://blogdugas.net/blog/2015/05/10/extended-kalman-filter-with-quaternions-for-attitude-estimation/
 
-/*
-SphereXEKF::Eigen::Matrix3d skew(Eigen::Vector4d q) {
+Eigen::Matrix3d skew(Eigen::Vector3d q) {
     Eigen::Matrix3d result;
     result <<
-     0, -q(3), q(2),
-     q(3), 0, -q(1),
-    -q(2), q(1), 0;
+            0, -q(2), q(1),
+            q(2), 0, -q(0),
+            -q(1), q(0), 0;
     return result;
-}*/
-
+}
 
 double* q_dot(double q[], double w[]) {
     Eigen::Vector4d q_vect(q);
@@ -61,9 +61,27 @@ double* q_dot(double q[], double w[]) {
     return qdot_arr;
 }
 
+double* compute_q(double q[], double w[], double dt) {
+    // Given q and w at t, computes q at t+1
+    Eigen::MatrixXd Omega(4, 4);
+    Eigen::Vector3d w_vect(w);
+    Eigen::Vector4d q_vect(q);
+    Eigen::Vector4d result;
+    // Omega[omega] = 0.5 * [skew(w) w; -w' 0  ]
+    Omega << skew(w_vect), w_vect,
+            -w_vect.transpose(), 0;
+    //result = exp(Omega * dt) * q_vect;
+    result = (Omega * dt).exp() * q_vect;
+    double* q_arr = new double[4];
+    for (int i = 0; i < 4; ++i) {
+        q_arr[i] = result(i);
+    }
+    return q_arr;
+}
+
 void SphereXEKF::debug(double fx[Nsta], double F[Nsta][Nsta], double hx[Mobs], double H[Mobs][Mobs]) {
     std::cerr << "dt " << dt << std::endl;
-    
+
     std::cerr << "current state" << std::endl;
     for (int i = 0; i < Nsta; ++i) {
         std::cerr << this->getX(i) << " ";
@@ -159,13 +177,23 @@ void SphereXEKF::model(double fx[Nsta], double F[Nsta][Nsta], double hx[Mobs], d
     // q
     double q[4] = {x[6], x[7], x[8], x[9]};
     double w[3] = {x[10], x[11], x[12]};
+    
+    double* qnew = compute_q(q, w, dt);
+    for (int i = 6; i < 10; ++i) {
+        // q = q*qdot
+        fx[i] = qnew[i - 6];
+    }
+
+    /*
+    double q[4] = {x[6], x[7], x[8], x[9]};
+    double w[3] = {x[10], x[11], x[12]};
     std::cerr << "computing qdot" << std::endl;
     double* qdot = q_dot(q, w);
     for (int i = 6; i < 10; ++i) {
         // q = q*qdot
         fx[i] = this->x[i] * qdot[i - 6] * dt;
     }
-    std::cerr << "used qdot" << std::endl;
+    std::cerr << "used qdot" << std::endl; */
     // TODO delete qdot here
 
     // w
@@ -174,7 +202,6 @@ void SphereXEKF::model(double fx[Nsta], double F[Nsta][Nsta], double hx[Mobs], d
     }
     std::cerr << "did w" << std::endl;
 
-    Eigen::Quaterniond quat(qdot);
     // process model jacobian
     Eigen::MatrixXd pmodel(Nsta, Nsta);
     std::cerr << "create pmodel" << std::endl;
