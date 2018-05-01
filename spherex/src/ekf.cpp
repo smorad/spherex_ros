@@ -4,85 +4,143 @@
  * and open the template in the editor.
  */
 
-#include "ekf.hpp"
+/* 
+ * File:   spherex_kalman.h
+ * Author: smorad
+ *
+ * Created on April 30, 2018, 2:28 PM
+ */
 
-void SphereXEKF::Fuser() {
-    // We approximate the process noise using a small constant
-    this->setQ(0, 0, .0001);
-    this->setQ(1, 1, .0001);
+#ifndef SPHEREX_KALMAN_H
+#define SPHEREX_KALMAN_H
 
-    // Same for measurement noise
-    this->setR(0, 0, .0001);
-    this->setR(1, 1, .0001);
-    this->setR(2, 2, .0001);
-}
+// r v q w
+#define Nsta 13 // num states
+// r v q w
+#define Mobs 13   // num observations
 
-double* 
 
-void SphereXEKF::model(double fx[Nsta], double F[Nsta][Nsta], double hx[Mobs], double H[Mobs][Nsta]) {
-    // Process model is f(x) = x
-    
-    double r[] =  {this->x[0], this->x[1], this->x[2]};
-    double rdot[] = {this->x[3], this->x[4], this->x[5]};
-    double q[] = {this->x[6], this->x[7], this->x[8], this->x[9]};
-    double qdot[] = {this->x[10], this->x[11], this->x[12], this->x[13]};
-    
-    // from ravi
-    // xdot = f(x)
-    // f(r0 + rdot) = rdot_t+dt = f(r0) + df/dr|r=r0
-    
-    // f()
-    
-    
-    
-    fx[0] = this->x[0];
-    fx[1] = this->x[1];
-    
-    // q
-    for(int i=6; i<10; ++i){
-        fx[i] = x[i] * 
+#include <Eigen/Dense>
+#include <TinyEKF.h>
+
+
+
+//int states = 13;
+//int measurements = 2;
+
+// timestep
+// TODO change to real value
+double dt = 1.0;
+double radius = 0.15; // m
+
+class EKF : public TinyEKF {
+    // quaternion shit
+    // http://blogdugas.net/blog/2015/05/10/extended-kalman-filter-with-quaternions-for-attitude-estimation/
+
+    Eigen::Matrix3d skew(Eigen::Vector4d q) {
+        Eigen::Matrix3d result;
+        result <<
+         0, -q(3), q(2),
+         q(3), 0, -q(1),
+        -q(2), q(1), 0;
+        return result;
     }
-    fx[6];
-    fx[7];
-    fx[8];
-    fx[9];
-    
-    // fx = state transition function
-    // F = jacobian of fx
-    // hx = sensor function
-    // H = jacobian of hx
-    
-    // x_k = Ax_k-1 + Bu_k or
-    // F = Afx + Buk
-    //A = eye(7); A(1,2), A(2,3)...A(n-1, n) = deltaT
-    //X_k = [x y z q0 q1 q2 q3]'
-    //X_k = A * X_k-1
-    
-    // q_k = q_k-1 * deltat * q_k-1
-    // q_k = q_k-1 * G^t * w * 1/2 * deltat
-    
-    // IFF a(z) <= g
-    // let pos = [x y z]'
-    // let thetadot = [thetax thetay thetaz]
-    // pos_k = thetadot_k-1 * r + pos_k-1
-    // x = r * theta + theta_0
     
 
-    // So process model Jacobian is identity matrix
-    F[0][0] = 1;
-    F[1][1] = 1;
+    double* q_dot(double q[]) {
+        Eigen::Vector4d q_vect(q);
+        Eigen::MatrixXd Gt(3, 4);
+        Eigen::Vector4d qdot;
+        //Eigen::MatrixXd result(4, 3);
+        Gt << -q[1], -q[2], -q[3],
+                q[0], q[3], -q[2],
+                -q[3], q[0], q[1],
+                q[2], -q[1], q[0];
+        qdot = 0.5 * q_vect * Gt;
+        double* qdot_arr = new double[4];
+        for (int i = 0; i < 4; ++i) {
+            qdot_arr[i] = qdot(i);
+        }
+        return qdot_arr;
+    }
 
-    // Measurement function simplifies the relationship between state and sensor readings for convenience.
-    // A more realistic measurement function would distinguish between state value and measured value; e.g.:
-    //   hx[0] = pow(this->x[0], 1.03);
-    //   hx[1] = 1.005 * this->x[1];
-    //   hx[2] = .9987 * this->x[1] + .001;
-    hx[0] = this->x[0]; // Barometric pressure from previous state
-    hx[1] = this->x[1]; // Baro temperature from previous state
-    hx[2] = this->x[1]; // LM35 temperature from previous state
+    void model(double fx[Nsta], double F[Nsta][Nsta], double hx[Mobs], double H[Mobs][Nsta]) {
+        // measurements
+        // r a q w
+        for (int i = 0; i < Mobs; ++i) {
+            // must integrate a to get v
+            if (i > 2 && i < 6) {
+                hx[i] = this->x[i] * dt;
+            } else {
+                hx[i] = this->x[i];
+            }
+        }
+        // measurement jacobian is constant
+        for (int i = 0; i < Mobs; ++i) {
+            for (int j = 0; j < Mobs; ++j) {
+                H[i][j] = 1;
+            }
+        }
 
-    // Jacobian of measurement function
-    H[0][0] = 1; // Barometric pressure from previous state
-    H[1][1] = 1; // Baro temperature from previous state
-    H[2][1] = 1; // LM35 temperature from previous state
-}
+        // process model
+        // r 
+        for (int i = 0; i < 3; ++i) {
+            // x = x + wRdt
+            fx[i] = this->x[i] + this->x[10 + i] * radius * dt;
+        }
+        // v
+        for (int i = 3; i < 6; ++i) {
+            // v = v
+            fx[i] = this->x[i];
+        }
+        // q
+        double q[4] = {x[6], x[7], x[8], x[9]};
+        double* qdot = q_dot(q);
+        for (int i = 6; i < 10; ++i) {
+            // q = q*qdot
+            fx[i] = this->x[i] * qdot[i - 6] * dt;
+        }
+        // TODO delete qdot here
+
+        // w
+        for (int i = 10; i < 13; ++i) {
+            fx[i] = this->x[i];
+        }
+
+        Eigen::Quaterniond quat(qdot);
+        // process model jacobian
+        Eigen::MatrixXd pmodel;
+        // r v q w
+        pmodel <<
+                // rx ry rz
+                1, 0, 0, /**/ 0, 0, 0, /**/ 0, 0, 0, 0, /**/ radius * dt, 0, 0,
+                0, 1, 0, /**/ 0, 0, 0, /**/ 0, 0, 0, 0, /**/ 0, radius * dt, 0,
+                0, 0, 1, /**/ 0, 0, 0, /**/ 0, 0, 0, 0, /**/ 0, 0, radius * dt,
+                // v
+                0, 0, 0, /**/ 1, 0, 0, /**/ 0, 0, 0, 0, /**/ 0, 0, 0,
+                0, 0, 0, /**/ 0, 1, 0, /**/ 0, 0, 0, 0, /**/ 0, 0, 0,
+                0, 0, 0, /**/ 0, 0, 1, /**/ 0, 0, 0, 0, /**/ 0, 0, 0,
+                // q TODO FIX ME
+                0, 0, 0, /**/ 0, 0, 0, /**/ 1, 0, 0, 0, /**/ 0, 0, 0,
+                0, 0, 0, /**/ 0, 0, 0, /**/ 0, 1, 0, 0, /**/ 0, 0, 0,
+                0, 0, 0, /**/ 0, 0, 0, /**/ 0, 0, 1, 0, /**/ 0, 0, 0,
+                0, 0, 0, /**/ 0, 0, 0, /**/ 0, 0, 0, 1, /**/ 0, 0, 0,
+                // w
+                0, 0, 0, /**/ 0, 0, 0, /**/ 0, 0, 0, 0, /**/ 1, 0, 0,
+                0, 0, 0, /**/ 0, 0, 0, /**/ 0, 0, 0, 0, /**/ 0, 1, 0,
+                0, 0, 0, /**/ 0, 0, 0, /**/ 0, 0, 0, 0, /**/ 0, 0, 1;
+
+
+    }
+};
+
+
+// Returns time derivative of quaterion
+// q = q * 0.5 * G'w * dt
+// q = 0.5 * dt * q * G'w
+
+
+
+
+#endif /* SPHEREX_KALMAN_H */
+
