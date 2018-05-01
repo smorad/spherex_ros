@@ -22,6 +22,12 @@
 //class SphereXEKF : public TinyEKF {
 
 SphereXEKF::SphereXEKF() {
+    for (int i = 0; i < Nsta; ++i) {
+        this->setQ(i, i, 0.0001);
+    }
+    for (int i = 0; i < Mobs; ++i) {
+        this->setR(i, i, 0.0001);
+    }
 }
 // quaternion shit
 // http://blogdugas.net/blog/2015/05/10/extended-kalman-filter-with-quaternions-for-attitude-estimation/
@@ -56,16 +62,17 @@ double* q_dot(double q[], double w[]) {
 }
 
 void SphereXEKF::debug(double fx[Nsta], double F[Nsta][Nsta], double hx[Mobs], double H[Mobs][Mobs]) {
-
+    std::cerr << "dt " << dt << std::endl;
+    
     std::cerr << "current state" << std::endl;
     for (int i = 0; i < Nsta; ++i) {
-        std::cerr << this->getX(i) << "   ";
+        std::cerr << this->getX(i) << " ";
     }
     std::cerr << std::endl;
 
     std::cerr << "process model" << std::endl;
     for (int j = 0; j < Nsta; ++j) {
-        std::cerr << fx[j] << "   ";
+        std::cerr << fx[j] << " ";
     }
     std::cerr << std::endl;
 
@@ -79,7 +86,7 @@ void SphereXEKF::debug(double fx[Nsta], double F[Nsta][Nsta], double hx[Mobs], d
 
     std::cerr << "sensor model" << std::endl;
     for (int j = 0; j < Mobs; ++j) {
-        std::cerr << hx[j] << "   ";
+        std::cerr << hx[j] << " ";
     }
     std::cerr << std::endl;
 
@@ -92,12 +99,10 @@ void SphereXEKF::debug(double fx[Nsta], double F[Nsta][Nsta], double hx[Mobs], d
     }
 }
 
-
-
 void SphereXEKF::model(double fx[Nsta], double F[Nsta][Nsta], double hx[Mobs], double H[Mobs][Nsta]) {
     std::cerr << "start model" << std::endl;
     // measurements
-    // r a q w
+    // r v q w
     for (int i = 0; i < Mobs; ++i) {
         // must integrate a to get v
         if (i > 2 && i < 6) {
@@ -109,7 +114,7 @@ void SphereXEKF::model(double fx[Nsta], double F[Nsta][Nsta], double hx[Mobs], d
     // measurement jacobian
     Eigen::MatrixXd smodel(Mobs, Mobs);
     smodel <<
-            // r a q w
+            // r v q w
             // r
             1, 0, 0, /**/ 0, 0, 0, /**/ 0, 0, 0, 0, /**/ 0, 0, 0,
             0, 1, 0, /**/ 0, 0, 0, /**/ 0, 0, 0, 0, /**/ 0, 0, 0,

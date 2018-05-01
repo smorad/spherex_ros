@@ -341,8 +341,9 @@ void simplify_cloud(pcl::PointCloud<pcl::PointXYZ>::Ptr cloud) {
 
 void slam(const sensor_msgs::ImuConstPtr& inertial, const sensor_msgs::PointCloudConstPtr& input) {
     // Compute timestep from last run
-    double dt = inertial->header.stamp.sec - last_t;
-    last_t = inertial->header.stamp.sec;
+    std::cerr << "stamp " << inertial->header.stamp.nsec << " last " << last_t << std::endl;
+    double dt = (inertial->header.stamp.nsec - last_t) / 10e9;   //in secs
+    last_t = inertial->header.stamp.nsec;
 
 
     // Convert from ROS to pcl cloud
