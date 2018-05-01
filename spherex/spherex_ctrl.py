@@ -50,31 +50,6 @@ class SpherexCtrl(object):
         if hasattr(self, 'cloud') and self.cloud:
             self.output_cloud.publish(self.cloud)
             print('published scan data to processor')
-            
-    def publish_stream(self):
-        pass
-            
-    def compute_free_boundary(self):
-        '''Given the merged point cloud data, compute the free
-        boundary'''
-        pass
-    
-    def compute_target_vector(self):
-        '''Given the free boundary, compute the target vector'''
-        # d = v0*cos(alpha) * t
-        # t = t1 + t2
-        # t1 = v0*sin(alpha) / g
-        # t2 = sqrt(
-        #   (v0 * sin(alpha)) ** 2 / g ** 2 - 2 * h / g
-        # )
-        
-        # d should be max visible distance, optimize for minimum v0
-        pass
-    
-    def compute_trajectory(self):
-        '''Given the target vector, jump as far as safely possible
-        (where we still have map data)'''
-        pass
 
 if __name__ == '__main__':
     SpherexCtrl()

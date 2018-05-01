@@ -71,6 +71,28 @@
             </preprocessorList>
           </cTool>
           <ccTool>
+            <incDir>
+              <pElem>include</pElem>
+              <pElem>/opt/ros/kinetic/include</pElem>
+              <pElem>/opt/ros/kinetic/include/xmlrpcpp</pElem>
+              <pElem>/usr/include/eigen3</pElem>
+              <pElem>/usr/include/pcl-1.7</pElem>
+              <pElem>/usr/include/ni</pElem>
+              <pElem>/usr/include/vtk-6.2</pElem>
+              <pElem>/usr/include/freetype2</pElem>
+              <pElem>/usr/include/x86_64-linux-gnu/freetype2</pElem>
+              <pElem>/usr/include/x86_64-linux-gnu</pElem>
+              <pElem>/usr/lib/openmpi/include/openmpi/opal/mca/event/libevent2021/libevent</pElem>
+              <pElem>/usr/lib/openmpi/include/openmpi/opal/mca/event/libevent2021/libevent/include</pElem>
+              <pElem>/usr/lib/openmpi/include</pElem>
+              <pElem>/usr/lib/openmpi/include/openmpi</pElem>
+              <pElem>/usr/include/python2.7</pElem>
+              <pElem>/usr/include/jsoncpp</pElem>
+              <pElem>/usr/include/hdf5/openmpi</pElem>
+              <pElem>/usr/include/libxml2</pElem>
+              <pElem>/usr/include/tcl</pElem>
+              <pElem>../../build/spherex</pElem>
+            </incDir>
             <preprocessorList>
               <Elem>ROSCONSOLE_BACKEND_LOG4CXX</Elem>
               <Elem>ROS_BUILD_SHARED_LIBS=1</Elem>
@@ -83,61 +105,16 @@
           <preBuildCommand>CMAKE_PREFIX_PATH=/home/smorad/catkin_ws ${CMAKE} -G "Unix Makefiles" -DCMAKE_BUILD_TYPE=Debug -DCMAKE_C_COMPILER=${IDE_CC} -DCMAKE_CXX_COMPILER=${IDE_CXX} -DCMAKE_C_FLAGS_DEBUG="-g3 -gdwarf-2" -DCMAKE_CXX_FLAGS_DEBUG="-g3 -gdwarf-2" -DCMAKE_EXPORT_COMPILE_COMMANDS=ON .</preBuildCommand>
         </preBuild>
       </makefileType>
-      <item path="src/ekf.cpp" ex="false" tool="1" flavor2="0">
+      <item path="src/ekf.cpp" ex="false" tool="1" flavor2="4">
         <ccTool flags="0">
-          <incDir>
-            <pElem>include</pElem>
-            <pElem>/opt/ros/kinetic/include</pElem>
-            <pElem>/opt/ros/kinetic/include/xmlrpcpp</pElem>
-            <pElem>/usr/include/eigen3</pElem>
-            <pElem>/usr/include/pcl-1.7</pElem>
-            <pElem>/usr/include/ni</pElem>
-            <pElem>/usr/include/vtk-6.2</pElem>
-            <pElem>/usr/include/freetype2</pElem>
-            <pElem>/usr/include/x86_64-linux-gnu/freetype2</pElem>
-            <pElem>/usr/include/x86_64-linux-gnu</pElem>
-            <pElem>/usr/lib/openmpi/include/openmpi/opal/mca/event/libevent2021/libevent</pElem>
-            <pElem>/usr/lib/openmpi/include/openmpi/opal/mca/event/libevent2021/libevent/include</pElem>
-            <pElem>/usr/lib/openmpi/include</pElem>
-            <pElem>/usr/lib/openmpi/include/openmpi</pElem>
-            <pElem>/usr/include/python2.7</pElem>
-            <pElem>/usr/include/jsoncpp</pElem>
-            <pElem>/usr/include/hdf5/openmpi</pElem>
-            <pElem>/usr/include/libxml2</pElem>
-            <pElem>/usr/include/tcl</pElem>
-            <pElem>../../build/spherex</pElem>
-          </incDir>
           <preprocessorList>
             <Elem>spherex_ekf_EXPORTS</Elem>
           </preprocessorList>
         </ccTool>
       </item>
       <item path="src/main.cpp" ex="false" tool="1" flavor2="4">
-        <ccTool>
-          <incDir>
-            <pElem>/opt/ros/kinetic/include</pElem>
-            <pElem>/opt/ros/kinetic/include/xmlrpcpp</pElem>
-            <pElem>/usr/include/eigen3</pElem>
-            <pElem>/usr/include/pcl-1.7</pElem>
-            <pElem>/usr/include/ni</pElem>
-            <pElem>/usr/include/vtk-6.2</pElem>
-            <pElem>/usr/include/freetype2</pElem>
-            <pElem>/usr/include/x86_64-linux-gnu/freetype2</pElem>
-            <pElem>/usr/include/x86_64-linux-gnu</pElem>
-            <pElem>/usr/lib/openmpi/include/openmpi/opal/mca/event/libevent2021/libevent</pElem>
-            <pElem>/usr/lib/openmpi/include/openmpi/opal/mca/event/libevent2021/libevent/include</pElem>
-            <pElem>/usr/lib/openmpi/include</pElem>
-            <pElem>/usr/lib/openmpi/include/openmpi</pElem>
-            <pElem>/usr/include/python2.7</pElem>
-            <pElem>/usr/include/jsoncpp</pElem>
-            <pElem>/usr/include/hdf5/openmpi</pElem>
-            <pElem>/usr/include/libxml2</pElem>
-            <pElem>/usr/include/tcl</pElem>
-            <pElem>../../build/spherex</pElem>
-          </incDir>
-        </ccTool>
       </item>
-      <item path="src/tiny_ekf.c" ex="false" tool="0" flavor2="0">
+      <item path="src/tiny_ekf.c" ex="false" tool="0" flavor2="2">
         <cTool flags="0">
         </cTool>
       </item>

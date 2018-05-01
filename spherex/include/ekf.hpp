@@ -14,28 +14,20 @@
 #ifndef EKF_HPP
 #define EKF_HPP
 
-// number of states we use
-// wx wy wz 
-// q0 q1 q2 q3
-// xdotdot ydotdot zdotdot
-// number of states we care about
-// q0 q1 q2 q3
-// q0dot q1dot q2dot q3dot
-// x y z
-// xdot ydot zdot
-#define Nsta 14
-
-// number of sensors
-// lidar
-// imu
-#define Mobs 2
-
+// r v q w
+#define Nsta 13 // num states
+// r v q w
+#define Mobs 13   // num observations
+// TODO set dt to actual value
+#define radius 0.15
 
 #include "consts.h"
 #include "TinyEKF.h"
 
 class SphereXEKF : public TinyEKF {
-    void Fuser();
+public:
+    double dt;
+    SphereXEKF();
     void model(double fx[Nsta], double F[Nsta][Nsta], double hx[Mobs], double H[Mobs][Nsta]);
 };
 

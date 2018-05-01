@@ -50,10 +50,13 @@
 #include <pcl/surface/mls.h>
 #include <sensor_msgs/Image.h>
 #include <sensor_msgs/Imu.h>
+#include <message_filters/subscriber.h>
+#include <message_filters/time_synchronizer.h>
 
+#include "ekf.hpp"
 
-gazebo_msgs::ModelState state_buf;
-gazebo_msgs::ModelState last_state_buf;
+SphereXEKF ekf;
+double last_t = 0;
 
 pcl::PolygonMesh partial_surface; // triangles(new pcl::PolygonMesh);
 
@@ -74,42 +77,6 @@ pcl::PointCloud<pcl::PointXYZ>::Ptr build_cloud(
     //pcl::io::savePLYFile("/home/smorad/cloud.ply", *cloud_ptr);
 
     return cloud_ptr;
-}
-
-std::vector<float> compute_sector(gazebo_msgs::ModelState pos_t0, gazebo_msgs::ModelState pos_t1, float radius=30){
-    
-    Eigen::Vector3f origin(0,0,0);
-    Eigen::Vector3f p_t0(pos_t0.pose.position.x, pos_t0.pose.position.y, pos_t0.pose.position.z);
-    Eigen::Vector3f p_t1(pos_t1.pose.position.x, pos_t1.pose.position.y, pos_t1.pose.position.z);
-    Eigen::Vector3f diff = p_t1 - p_t0;
-    float d = diff.squaredNorm();
-    
-    if (d > radius || d == radius){
-        // no intersection
-        std::cerr << "Moved too fast, could not compute sector" << std::endl;
-        std::vector<float> v;
-        v.push_back(0.0);
-        return v;
-    }
-    
-    // create new origin at p_t1
-    // p_t0 = p_t1 - p_t0
-    // draw new axis along distance vector
-    // 
-    
-    
-    // Compute intersection points between two circles
-    // (x-x0)^2 + (y-y0)^2 + (z-z0)^2 = radius^2
-    // (x-x1)^2 + (y-y1)^2 + (z-z1)^2 = radius^2
-    // (x-x2)^2 + (y-y2)^2 + (z-z2)^2 = radius^2
-    // (u - p_t0) .^ 2 = r^2
-    // (u - p_t1) .^ 2 = r^2
-    
-    
-    // (u - p_t0).dot(u - p_t0) = r^2
-    // uu -2u.dot(p_t0) + p_t0.dot(p_t0) = r^2
-    // u(u - 2.do)
-    
 }
 
 
@@ -244,16 +211,18 @@ void process_fast_triangulate(const sensor_msgs::PointCloud& input) {
 
 // Build the affine transformation matrix
 
-Eigen::Matrix4f build_trans_mat(const gazebo_msgs::ModelState state) {
+/*
+Eigen::Matrix4f build_trans_mat(const sensor_msgs::Imu inertial) {
     //gazebo_msgs::ModelState state = state_buf;
-    Eigen::Quaternionf q(state.pose.orientation.w, state.pose.orientation.x, state.pose.orientation.y, state.pose.orientation.z);
+    // TODO DO NOT USE GIVEN QUATERNIONS
+    Eigen::Quaternionf q(inertial.orientation.w, inertial.orientation.x, inertial.orientation.y, inertial.orientation.z);
     Eigen::Matrix3f A = q.toRotationMatrix();
     Eigen::Matrix4f res;
-    /* rot rot rot x
-     * rot rot rot y
-     * rot rot rot z
-     * 0   0   0   1
-     */
+    // rot rot rot x
+    // rot rot rot y
+    // rot rot rot z
+    // 0   0   0   1
+    
     res << A(0, 0), A(0, 1), A(0, 2), state.pose.position.x,
             A(1, 0), A(1, 1), A(1, 2), state.pose.position.y,
             A(2, 0), A(2, 1), A(2, 2), state.pose.position.z,
@@ -262,33 +231,10 @@ Eigen::Matrix4f build_trans_mat(const gazebo_msgs::ModelState state) {
     //std::cerr << res << std::endl;
 
     return res;
-}
-
-Eigen::Matrix4f build_trans_mat2() {
-    gazebo_msgs::ModelState state = state_buf;
-    Eigen::Quaternionf q(state.pose.orientation.w, state.pose.orientation.x, state.pose.orientation.y, state.pose.orientation.z);
-    Eigen::Matrix3f A = q.toRotationMatrix();
-    Eigen::Translation3f T(Eigen::Vector3f(state.pose.position.x, state.pose.position.y, state.pose.position.z));
-    Eigen::Matrix4f res; // = T * A;
-    /* rot rot rot x
-     * rot rot rot y
-     * rot rot rot z
-     * 0   0   0   1
-     */
-
-    //std::cerr << res << std::endl;
-
-    return res;
-}
+}*/
 
 pcl::PointCloud<pcl::PointXYZ>::Ptr world_cloud;
-Eigen::Vector3f previous_pos;
 
-void prune_cloud(pcl::PointCloud<pcl::PointXYZ>::Ptr cloud, Eigen::Vector3f delta_r) {
-    for (int i = 0; i < cloud->points.size(); ++i) {
-
-    }
-}
 
 void compute_hop_vector_naive(const pcl::PointCloud<pcl::PointXYZ>::Ptr world_cloud) {
     //pcl::octree::OctreePointCloudDensity<pcl::PointXYZ> density_tree(50);
@@ -309,6 +255,7 @@ void compute_hop_vector_naive(const pcl::PointCloud<pcl::PointXYZ>::Ptr world_cl
     std::cerr << "Heading towards point " << target_point << std::endl;
 }
 
+/*
 void compute_hop_vector_lazy_closest(const pcl::PointCloud<pcl::PointXYZ>::Ptr world_cloud) {
     pcl::KdTreeFLANN<pcl::PointXYZ> tree;
     // Make a copy of world cloud
@@ -344,7 +291,7 @@ void compute_hop_vector_lazy_closest(const pcl::PointCloud<pcl::PointXYZ>::Ptr w
     pcl::PointCloud<pcl::PointXYZ> c;
     c.points.push_back(target_point);
     pcl::io::savePLYFile("/home/smorad/cloud_target.ply", c);
-}
+}*/
 
 void remove_outliers(pcl::PointCloud<pcl::PointXYZ>::Ptr cloud) {
     pcl::PointCloud<pcl::PointXYZ>::Ptr cloud_filtered(new pcl::PointCloud<pcl::PointXYZ>);
@@ -392,13 +339,14 @@ void simplify_cloud(pcl::PointCloud<pcl::PointXYZ>::Ptr cloud) {
 
 }
 
-void slam(const sensor_msgs::PointCloud& input) {
-    // Freeze position first thing, or it may change while we are processing
-    gazebo_msgs::ModelState state = state_buf;
+void slam(const sensor_msgs::ImuConstPtr& inertial, const sensor_msgs::PointCloudConstPtr& input) {
+    // Compute timestep from last run
+    double dt = inertial->header.stamp.sec - last_t;
+    last_t = inertial->header.stamp.sec;
 
 
     // Convert from ROS to pcl cloud
-    pcl::PointCloud<pcl::PointXYZ>::Ptr cloud_ptr = build_cloud(input);
+    pcl::PointCloud<pcl::PointXYZ>::Ptr cloud_ptr = build_cloud(*input);
 
 
     // Let first iteration be the origin in the inertial frame
@@ -409,7 +357,6 @@ void slam(const sensor_msgs::PointCloud& input) {
         //simplify_cloud(cloud_ptr);
         world_cloud = cloud_ptr;
 
-        previous_pos = Eigen::Vector3f(0, 0, 0);
         pcl::io::savePLYFile("/home/smorad/cloud_origin.ply", *cloud_ptr);
         // TODO: PASS THIS FROM GAZEBO
         float lidar_range = 100; // meters
@@ -420,13 +367,13 @@ void slam(const sensor_msgs::PointCloud& input) {
     //simplify_cloud(world_cloud);
 
     // Grab most recent pos data
-    Eigen::Matrix4f estimated_transform = build_trans_mat(state);
+    //Eigen::Matrix4f estimated_transform = build_trans_mat(inertial);
 
     // Transform incoming cloud to inertial frame
-    pcl::PointCloud<pcl::PointXYZ>::Ptr input_cloud(new pcl::PointCloud<pcl::PointXYZ>);
-    pcl::transformPointCloud(*cloud_ptr, *input_cloud, estimated_transform);
+    //pcl::PointCloud<pcl::PointXYZ>::Ptr input_cloud(new pcl::PointCloud<pcl::PointXYZ>);
+    //pcl::transformPointCloud(*cloud_ptr, *input_cloud, estimated_transform);
 
-    pcl::io::savePLYFile("/home/smorad/cloud_transformed.ply", *input_cloud);
+    //pcl::io::savePLYFile("/home/smorad/cloud_transformed.ply", *input_cloud);
 
     pcl::IterativeClosestPoint<pcl::PointXYZ, pcl::PointXYZ> icp;
     // Set the max correspondence distance to 25cm (e.g., correspondences with higher distances will be ignored)
@@ -437,27 +384,10 @@ void slam(const sensor_msgs::PointCloud& input) {
     icp.setTransformationEpsilon(1e-8);
     // Set the euclidean distance difference epsilon (criterion 3)
     icp.setEuclideanFitnessEpsilon(0.001);
-
-    
-    // find theta1 and theta2 given distance traveled
-    // only points in theta1 * r to theta2 * r will be used
-    // domain: rdiff < x < r, theta1<theta<theta2
-    
-    // radial search
-    // for each point in search, compute theta
-    // circle eq (xc0-x0) ^2 + (yc0-y0) ^2 + (zc0-z0) ^2 = R^2
-    // (xc0) ^2 + (yc0) ^2 + (zc0) ^2 = R^2
-    // (xc1-x0) ^2 + (yc1-y0) ^2 + (zc1-z0) = (xc0-x0) ^2 + (yc0-y0) ^2 + (zc0-z0)
-    
-    
-    // x^2 + y^2 = r^2
-    // (x-x0)^2 + (y-y0)^2 = r^2
-    
-    // two intersection points should have the same radius
     
     
     // Align cloud_ptr to world_cloud
-    icp.setInputSource(input_cloud);
+    icp.setInputSource(cloud_ptr);
     icp.setInputTarget(world_cloud);
     //pcl::PointCloud<pcl::PointXYZ>::Ptr output_cloud(new pcl::PointCloud<pcl::PointXYZ>);
     pcl::PointCloud<pcl::PointXYZ> output_cloud;
@@ -468,7 +398,7 @@ void slam(const sensor_msgs::PointCloud& input) {
 
         return;
     }
-    Eigen::Matrix4f transformation_delta = icp.getFinalTransformation();
+    Eigen::Matrix4f transformation = icp.getFinalTransformation();
     std::cerr << "Fitness " << icp.getFitnessScore() << std::endl;
 
     // TODO remove this to detect slippage
@@ -485,6 +415,37 @@ void slam(const sensor_msgs::PointCloud& input) {
     pcl::io::savePLYFile("/home/smorad/world.ply", *world_cloud);
     //compute_hop_vector_naive(world_cloud);
     //slow_boundary(world_cloud);
+    
+    
+    // EKF
+    double z[13];   //r a q w
+    // r
+    z[0] = transformation(0,3);
+    z[1] = transformation(1,3);
+    z[2] = transformation(2,3);
+    // a
+    z[3] = inertial->linear_acceleration.x;
+    z[4] = inertial->linear_acceleration.y;
+    z[5] = inertial->linear_acceleration.z;
+    // TODO impl imu
+    // q
+    // convert rot mat to quat
+    Eigen::Matrix3f test = transformation.block<3,3>(0,0);
+    std::cerr << "TEST " << test << std::endl;
+    
+    Eigen::Quaternionf q(transformation.block<3,3>(0,0));
+    z[6] = q.w();
+    z[7] = q.x();
+    z[8] = q.y();
+    z[9] = q.z();
+    // w
+    z[10] = inertial->angular_velocity.x;
+    z[11] = inertial->angular_velocity.y;
+    z[12] = inertial->angular_velocity.z;
+    ekf.step(z);
+    std::cerr << "sensor vals" << z[0] << " " << z[1] << " " << z[2] << std::endl;
+    std::cerr << "new values " << ekf.getX(0) << " " << ekf.getX(1) << " " << ekf.getX(2) << std::endl;
+    
 }
 
 void skew_image(const sensor_msgs::Image& input) {
@@ -499,21 +460,6 @@ void skew_image(const sensor_msgs::Image& input) {
     // Texture map picture to surface (this handles shearing/skewing/etc)
 }
 
-void store_pos(const gazebo_msgs::ModelStates& states) {
-    //std::cerr<< state.name. << std::endl;
-    for (int i = 0; i < states.name.size(); ++i) {
-        if (states.name.at(i) == "SphereX") {
-            gazebo_msgs::ModelState s;
-            s.model_name = states.name.at(i);
-            s.pose = states.pose.at(i);
-            last_state_buf = state_buf;
-            state_buf = s;
-
-            break;
-        }
-    }
-}
-
 
 int main(int argc, char** argv) {
     std::cout << "Main starting..." << std::endl;
@@ -522,7 +468,12 @@ int main(int argc, char** argv) {
     //ros::Subscriber lidar_reader = nh.subscribe("lidar_stream", 1, process_fast_triangulate);
     //ros::Subscriber pos_reader = nh.subscribe("gazebo/model_states", 1, store_pos);
     //ros::Subscriber imu_reader = nh.subscribe("imu_stream", 1, store_imu);
-    ros::Subscriber cloud_reader = nh.subscribe("pointcloud_buffer", 1, slam);
-    ros::Subscriber image_reader = nh.subscribe("cam1_stream", 1, skew_image);
+    //ros::Subscriber cloud_reader = nh.subscribe("pointcloud_buffer", 1, slam);
+    //ros::Subscriber image_reader = nh.subscribe("cam1_stream", 1, skew_image);
+    
+    message_filters::Subscriber<sensor_msgs::Imu> imu_sub(nh, "imu_stream", 1);
+    message_filters::Subscriber<sensor_msgs::PointCloud> ptc_sub(nh, "pointcloud_buffer", 1);
+    message_filters::TimeSynchronizer<sensor_msgs::Imu, sensor_msgs::PointCloud> sync(imu_sub, ptc_sub, 10);
+    sync.registerCallback(boost::bind(&slam, _1, _2));
     ros::spin();
 }
